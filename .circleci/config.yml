@@ -1,0 +1,91 @@
+version: 2.1
+
+executors:
+  dotnet:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:5.0
+    resource_class: medium
+commands:
+  deploy:
+    steps:
+      - run:
+          name: Prepare ENV
+          command: bash scripts/prepareEnv.sh
+      - run:
+          name: Deploy
+          command: bash scripts/deploy.sh
+
+jobs:
+  dev:
+    executor: dotnet
+    steps:
+      - checkout
+      - deploy
+
+  sit:
+    executor: dotnet
+    steps:
+      - checkout
+      - deploy
+
+  uat:
+    executor: dotnet
+    steps:
+      - checkout
+      - deploy
+
+  stg:
+    executor: dotnet
+    steps:
+      - checkout
+      - deploy
+
+  prd:
+    executor: dotnet
+    steps:
+      - checkout
+      - deploy
+
+workflows:
+  version: 2
+  all:
+    jobs:
+      - approval-portal:
+          type: approval
+          filters:
+            branches:
+              only:
+                - uat
+                - stg
+                - master
+      - dev:
+          context: dev
+          filters:
+            branches:
+              only: dev
+      - sit:
+          context: sit
+          filters:
+            branches:
+              only: sit
+      - uat:
+          requires:
+            - approval-portal
+          context: uat
+          filters:
+            branches:
+              only: uat
+      - stg:
+          requires:
+            - approval-portal
+          context: stg
+          filters:
+            branches:
+              only: stg
+      - prd:
+          requires:
+            - approval-portal
+          context: prd
+          filters:
+            branches:
+              only: master

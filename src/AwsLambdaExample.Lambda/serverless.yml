@@ -1,0 +1,52 @@
+﻿service:
+  name: aws-lambda-test
+
+
+plugins:
+  - serverless-prune-plugin
+
+provider:
+  name: aws
+  runtime: dotnetcore3.1
+  region: ${env:AWS_REGION_NAME}
+  stage: ${env:DEPLOYMENT_STAGE}
+  stackName: aws-lambda-test-${env:DEPLOYMENT_STAGE}
+  deploymentBucket: deployment-bucket-${env:DEPLOYMENT_STAGE}
+  logRetentionInDays: 90
+  iamManagedPolicies:
+    - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+  environment:
+    DEPLOYMENT_STAGE: ${env:DEPLOYMENT_STAGE}
+    AWS_REGION_NAME: ${env:AWS_REGION_NAME}
+    CONNECTION_STRING: ${env:CONNECTION_SECRET_KEY}
+
+custom:
+  prune:
+    automatic: true
+    number: 5
+
+package:
+  individually: true
+
+functions:
+  SybaseMicroservce:
+    name: #{{LAMBDA_NAME}}
+    handler: AwsLambdaExample::AwsLambdaExample.Function::FunctionHandler
+    memorySize: 1024
+    timeout: 900
+    maximumRetryAttempts: 0
+    vpc:
+      securityGroupIds:
+        - ${env:SECURITY_GROUP}
+      subnetIds:
+        - ${env:SUBNET_1}
+        - ${env:SUBNET_2}
+        - ${env:SUBNET_3}
+    package:
+      artifact: ./bin/Release/netcoreapp3.1/AwsLambdaExample.zip
+    events:
+    - schedule:
+        name: warm_up_#{{LAMBDA_NAME}}
+        description: "your scheduled rate event description"
+        rate: rate(5 minutes)
